@@ -1,0 +1,19 @@
+AODV 
+	•	流程:
+	•	当节点有到其他节点的新请求时，发送RREQ。链路上目标节点或有到目标节点的最新路径信息的节点都可给源节点回复RREP（最新指比当前请求的时间更近----目的地序列号大于等于请求包中同目的地序列号）。
+	•	中间节点（收到RREQ的节点）会反向生成到源节点的路由
+	•	报错机制：
+  当一条active链路break了，节点会监测到并向其他节点发送链路断裂的信息（RRER）。
+  技术支持：  每个节点维护一个precursor list，存到不同目的节点的邻居节点的IP地址信息。（可由第二步生成；RREP前缀不为0表示RREQ源）
+	•	序列号----时间：
+	•	从源端过来的包记录源端（作为目的端）序列号，添加到源端的路由表项
+	•	从目的端到源端的包同样要记录路由表项（/更新），以目的端为目标记录序列号
+
+
+
+
+
+句读：
+	•	One distinguishing feature of AODV is its use of a destination sequence number for each route entry.  The destination sequence number is created by the destination to be included along with any route information it sends to requesting nodes.
+表示： 每一条新路由表项（包括更新）会有一个序列号。当目的节点给源节点回RREP信息时，包含目的节点以及时间信息。当包通过中间节点时，这些信息帮助中间节点更新或创建新的路由及对应序列号（目的节点，时间）。
+
