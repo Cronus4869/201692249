@@ -16,10 +16,12 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Authors: Erik Nordstr�m, <erik.nordstrom@it.uu.se>
+ * Authors: Erik Nordström, <erik.nordstrom@it.uu.se>
  *          
  *
  *****************************************************************************/
+
+//节点通过广播hello报文传递连接信息
 
 #ifdef NS_PORT
 #include "ns-2/aodv-uu.h"
@@ -69,6 +71,8 @@ void NS_CLASS hello_start()
 
     hello_send(NULL);
 }
+//hello计时器及log信息的初始化
+//涉及DEBUG中信息，看完DEBUG源码后整理
 
 void NS_CLASS hello_stop()
 {
@@ -95,7 +99,8 @@ void NS_CLASS hello_send(void *arg)
 	hello_stop();
 	return;
     }
-
+     //从上次收到邻居节点的hello消息到现在，若时间大于ACTIVE_ROUTE_TIMEOUT则视为链路断
+	
     time_diff = timeval_diff(&now, &this_host.bcast_time);
     jitter = hello_jitter();
 
@@ -125,6 +130,10 @@ void NS_CLASS hello_send(void *arg)
 
 		ext->type = RREP_HELLO_NEIGHBOR_SET_EXT;
 		ext->length = 0;
+		    
+     //Hello Interval的拓展加在RREP后，且TTL为1. 
+     //邻居节点用此来决定等待后续同样RREP的时间
+
 
 		for (i = 0; i < RT_TABLESIZE; i++) {
 		    list_t *pos;
@@ -145,12 +154,14 @@ void NS_CLASS hello_send(void *arg)
 			}
 		    }
 		}
+	//将正在被使用的hello_timer的节点加到发送hello报文的邻居（作为目的节点）列表中
 		if (ext->length)
 		    msg_size = RREP_SIZE + AODV_EXT_SIZE(ext);
 	    }
 	    dest.s_addr = AODV_BROADCAST;
 	    aodv_socket_send((AODV_msg *) rrep, dest, msg_size, 1, &DEV_NR(i));
 	}
+	    //从该接口根据hello邻居列表发送hello报文的广播
 
 	timer_set_timeout(&hello_timer, HELLO_INTERVAL + jitter);
     } else {
