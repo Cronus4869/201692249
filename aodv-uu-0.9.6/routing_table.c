@@ -74,9 +74,9 @@ void NS_CLASS rt_table_destroy()
 unsigned int hashing(struct in_addr *addr, hash_value * hash)
 {
 	/*   *hash = (*addr & 0x7fffffff); */
-	*hash = (hash_value) addr->s_addr;
+	*hash = (hash_value) addr->s_addr; // change the value of *hash.
 
-	return (*hash & RT_TABLEMASK);
+	return (*hash & RT_TABLEMASK); // gain later 6 bits of *hash.
 }
 
 rt_table_t *NS_CLASS rt_table_insert(struct in_addr dest_addr,
@@ -349,11 +349,11 @@ rt_table_t *NS_CLASS rt_table_find(struct in_addr dest_addr)
 	unsigned int index;
 	list_t *pos;
 
-	if (rt_tbl.num_entries == 0)
+	if (rt_tbl.num_entries == 0)  // rt_tbl is a static variable.
 		return NULL;
 
 	/* Calculate index */
-	index = hashing(&dest_addr, &hash);
+	index = hashing(&dest_addr, &hash); // hash changes into dest_addr and index change into later 6 bits of it, maybe called "hash value". 
 
 	/* Handle collisions: */
 	list_foreach(pos, &rt_tbl.tbl[index]) {

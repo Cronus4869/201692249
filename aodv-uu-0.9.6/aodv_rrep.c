@@ -39,7 +39,9 @@
 extern int unidir_hack, optimized_hellos, llfeedback;
 
 #endif
-
+/**
+ * create an RREP struct and return a pointer indicating it.
+**/
 RREP *NS_CLASS rrep_create(u_int8_t flags,
 			   u_int8_t prefix,
 			   u_int8_t hcnt,
@@ -48,7 +50,7 @@ RREP *NS_CLASS rrep_create(u_int8_t flags,
 			   struct in_addr orig_addr, u_int32_t life)
 {
     RREP *rrep;
-
+// call function below to create RREP.
     rrep = (RREP *) aodv_socket_new_msg();
     rrep->type = AODV_RREP;
     rrep->res1 = 0;
@@ -76,6 +78,7 @@ RREP *NS_CLASS rrep_create(u_int8_t flags,
     return rrep;
 }
 
+/*create a rrep-ack struct and return its pointer.*/
 RREP_ack *NS_CLASS rrep_ack_create()
 {
     RREP_ack *rrep_ack;
@@ -88,12 +91,13 @@ RREP_ack *NS_CLASS rrep_ack_create()
     return rrep_ack;
 }
 
+/*process ack using debug command, as well as timeout.*/
 void NS_CLASS rrep_ack_process(RREP_ack * rrep_ack, int rrep_acklen,
 			       struct in_addr ip_src, struct in_addr ip_dst)
 {
     rt_table_t *rt;
 
-    rt = rt_table_find(ip_src);
+    rt = rt_table_find(ip_src);	// find if ip_src is already in routing table
 
     if (rt == NULL) {
 	DEBUG(LOG_WARNING, 0, "No RREP_ACK expected for %s", ip_to_str(ip_src));
@@ -103,7 +107,7 @@ void NS_CLASS rrep_ack_process(RREP_ack * rrep_ack, int rrep_acklen,
     DEBUG(LOG_DEBUG, 0, "Received RREP_ACK from %s", ip_to_str(ip_src));
 
     /* Remove unexpired timer for this RREP_ACK */
-    timer_remove(&rt->ack_timer);
+    timer_remove(&rt->ack_timer); // why need to be removed?
 }
 
 AODV_ext *NS_CLASS rrep_add_ext(RREP * rrep, int type, unsigned int offset,
