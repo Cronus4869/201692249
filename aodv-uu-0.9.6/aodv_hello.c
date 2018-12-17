@@ -200,6 +200,7 @@ void NS_CLASS hello_process(RREP * hello, int rreplen, unsigned int ifindex)
 	flags |= RT_UNIDIR;
 
     /* Check for hello interval extension: */
+	//hello_interval 期间，检查上一个hello——interval是否发送了广播信息---->决定是否发送RREP（hello）报文
     ext = (AODV_ext *) ((char *) hello + RREP_SIZE);
 
     while (rreplen > (int) RREP_SIZE) {
@@ -242,6 +243,8 @@ void NS_CLASS hello_process(RREP * hello, int rreplen, unsigned int ifindex)
 	rreplen -= AODV_EXT_SIZE(ext);
 	ext = AODV_EXT_NEXT(ext);
     }
+	//AODV_Hello_interval_extension有两种类型：1.hello报文（RREP）后用于建立连接
+	                                     //  2.用于RREP报文（表邻居集合）后
 
 #ifdef DEBUG_HELLO
     DEBUG(LOG_DEBUG, 0, "rcvd HELLO from %s, seqno %lu",
@@ -253,13 +256,14 @@ void NS_CLASS hello_process(RREP * hello, int rreplen, unsigned int ifindex)
 	state = INVALID;
     else
 	state = VALID;
-
+    //？？？？？？？此处是否应相反？？？
     timeout = ALLOWED_HELLO_LOSS * hello_interval + ROUTE_TIMEOUT_SLACK;
 
     if (!rt) {
 	/* No active or expired route in the routing table. So we add a
 	   new entry... */
-
+        //只有当其是active链路的一部分时才可使用hello
+     //无论何时，节点收到邻居发送的hello报文时，必须保证有到邻居的active链路（没有可以创造表项----add new entry）
 	rt = rt_table_insert(hello_dest, hello_dest, 1,
 			     hello_seqno, timeout, state, flags, ifindex);
 
@@ -272,7 +276,7 @@ void NS_CLASS hello_process(RREP * hello, int rreplen, unsigned int ifindex)
 	rt->hello_cnt = 1;
 
     } else {
-
+       //存在到邻居到active链路时
 	if ((flags & RT_UNIDIR) && rt->state == VALID && rt->hcnt > 1) {
 	    goto hello_update;
 	}
@@ -289,9 +293,11 @@ void NS_CLASS hello_process(RREP * hello, int rreplen, unsigned int ifindex)
 	}
 	rt_table_update(rt, hello_dest, 1, hello_seqno, timeout, VALID, flags);
     }
-
-  hello_update:
-
+//从hello报文中得到最新的目的序列号 
+  
+	   
+hello_update:
+//lifetime 增加
     hello_update_timeout(rt, &now, ALLOWED_HELLO_LOSS * hello_interval);
     return;
 }
