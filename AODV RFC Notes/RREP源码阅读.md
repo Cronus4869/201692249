@@ -23,7 +23,16 @@ RREP结构体被定义为这样的一个结构体：
 
 ##  创建RREP
 
-定位：aodv_rrep.c
+```c
+RREP *NS_CLASS rrep_create(u_int8_t flags,
+                             u_int8_t prefix,
+                             u_int8_t hcnt,
+                             struct in_addr dest_addr,
+                             u_int32_t dest_seqno,
+                             struct in_addr orig_addr, u_int32_t life);
+```
+
+函数定义如上，根据参数创建并返回RREP指针，下面我们来看具体代码。
 
 ```
 52~54: 创建一个 AODV_msg 消息并返回指针，强制转换成RREP *类型。我们来看一下aodv_socket 消息是如何创建的：
@@ -47,7 +56,9 @@ RREP结构体被定义为这样的一个结构体：
 
 RREP-ACK的创建和RREP十分类似，都是创建一个原始的 AODV_msg 然后转换成其指针类型。需要注意的是，RREP-ACK仅仅是为了确定当前连接是双向的，因此，它仅需要包含一个type信息（最多还有存储信息）。
 
-定位：aodv_rrep.c
+```c
+RREP_ack *NS_CLASS rrep_ack_create();
+```
 
 ```
 84~87: 声明 RREP-ack 指针；创建 aodv_msg ，返回指针并强制转换成 RREP-ack类型；将结构体的type成员变更为ack类型。
@@ -57,6 +68,13 @@ RREP-ACK的创建和RREP十分类似，都是创建一个原始的 AODV_msg 然�
 
 
 ## 处理RREP-ACK
+
+函数定义：
+
+```c
+void NS_CLASS rrep_ack_process(RREP_ack * rrep_ack, int rrep_acklen,
+                               struct in_addr ip_src, struct in_addr ip_dst);
+```
 
 RREP-ACK的处理涉及到路由表，我们先来简单了解一下路由表项在实现中的结构：
 
@@ -84,6 +102,13 @@ RREP-ACK的处理涉及到路由表，我们先来简单了解一下路由表项
 
 
 ## RREP消息扩展
+
+函数定义：
+
+```c
+AODV_ext *NS_CLASS rrep_add_ext(RREP * rrep, int type, unsigned int offset,
+                                 int len, char *data);
+```
 
 源码还提供了对超出 `RREP_SIZE` 的 `rrep` 的扩展服务。本文不认为它是重点，随便解释一下：
 
@@ -210,6 +235,12 @@ void NS_CLASS rrep_forward(RREP * rrep, int size, rt_table_t * rev_rt, 						rt_
 
 ## RREP处理
 
+- 初始化
+- 扩展部分处理
+- 创建或更新转发路由
+- 发送RREP-ACK
+- 匹配自己和rrep源端
+
 ```c
 void NS_CLASS rrep_process(RREP * rrep, int rreplen, struct in_addr ip_src,
                             struct in_addr ip_dst, int ip_ttl,
@@ -242,8 +273,28 @@ void NS_CLASS rrep_process(RREP * rrep, int rreplen, struct in_addr ip_src,
 ### 检查是否需要创建转发路由
 
 ```
-316~317: 找到到达 rrep 目的端的路由表项，交给变量 fwd_rt ，找到到达 rrep 的路由表项，交给变量 rev_rt。
+316~317: 找到到达 rrep 目的端的路由表项，交给变量 fwd_rt ，找到到达 rrep 源端的路由表项，交给变量 rev_rt。
 321~332: 如果转发表项不存在，调用 rt_table_insert 新建一个。
-323~334: 
+323~333: 如果转发表项的目的地序列号为0，或者rrep的序列号大于转发表项的目的地序列号，或是相等但是转发表项无效或者转发表项是单向路径，或是rrep跳数+1小于转发的跳数，则更新转发路由表项，将转发表项的跳数、以及flags都赋值给相关变量。
+334~341: 如果转发表项的跳数多于1，则丢弃，写入日志。
+```
+
+
+
+### 根据A flag返回RREP-ACK
+
+```
+346~351：如果rrep的a flag置1，给转发表项的下一跳发送一个ACK，将a flag恢复0.
+```
+
+
+
+### 匹配源端
+
+```
+358: 如果rrep的源端是自己的某个网卡，进行处理。
+360~378: 如果网关配置了，但是路由表里并没有到网关的表项，假装添加一个路由，实际上是并不返回生成的路由表项，而是通过inet_rt保存的真正的目的端，然后调用insert函数把生成这个真正的目的端表项并保存到全局变量路由表里面。如果已经有了就做简单更新。
+386~403: 如果路由之前被修复过，那么需要向源发送一个暂时不要删除的RERR，源端可以选择重新发送它。
+404~411: 如果rrep源端不是自己的网卡口，沿着反向路由进行转发
 ```
 

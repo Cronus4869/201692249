@@ -364,10 +364,10 @@ void NS_CLASS rrep_process(RREP * rrep, int rreplen, struct in_addr ip_src,
 	    /* Add a "fake" route indicating that this is an Internet
 	     * destination, thus should be encapsulated and routed through a
 	     * gateway... */
-	    if (!inet_rt)
+	    if (!inet_rt) // use function to send device msg but not recieve return. Just for sending relative msg.
 		rt_table_insert(inet_dest_addr, rrep_dest, rrep_new_hcnt, 0,
 				rrep_lifetime, VALID, RT_INET_DEST, ifindex);
-	    else if (inet_rt->state == INVALID || rrep_new_hcnt < inet_rt->hcnt) {
+	    else if (inet_rt->state == INVALID || rrep_new_hcnt < inet_rt->hcnt) {	// is really update.
 		rt_table_update(inet_rt, rrep_dest, rrep_new_hcnt, 0,
 				rrep_lifetime, VALID, RT_INET_DEST |
 				inet_rt->flags);
