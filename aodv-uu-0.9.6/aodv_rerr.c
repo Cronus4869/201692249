@@ -54,7 +54,7 @@ RERR *NS_CLASS rerr_create(u_int8_t flags, struct in_addr dest_addr,
 
     return rerr;
 }
-
+/**add additional destination in rerr.**/
 void NS_CLASS rerr_add_udest(RERR * rerr, struct in_addr udest,
 			     u_int32_t udest_seqno)
 {
@@ -109,6 +109,7 @@ void NS_CLASS rerr_process(RERR * rerr, int rerrlen, struct in_addr ip_src,
 	    /* Checking sequence numbers here is an out of draft
 	     * addition to AODV-UU. It is here because it makes a lot
 	     * of sense... */
+	    // whatever, never execute statement.
 	    if (0 && (int32_t) rt->dest_seqno > (int32_t) rerr_dest_seqno) {
 		DEBUG(LOG_DEBUG, 0, "Udest ignored because of seqno");
 		udest = RERR_UDEST_NEXT(udest);
@@ -186,13 +187,13 @@ void NS_CLASS rerr_process(RERR * rerr, int rerrlen, struct in_addr ip_src,
     if (new_rerr) {
 
 	rt = rt_table_find(rerr_unicast_dest);
-
+	// unicast.
 	if (rt && new_rerr->dest_count == 1 && rerr_unicast_dest.s_addr)
 	    aodv_socket_send((AODV_msg *) new_rerr,
 			     rerr_unicast_dest,
 			     RERR_CALC_SIZE(new_rerr), 1,
 			     &DEV_IFINDEX(rt->ifindex));
-
+	// broadcast.
 	else if (new_rerr->dest_count > 0) {
 	    /* FIXME: Should only transmit RERR on those interfaces
 	     * which have precursor nodes for the broken route */
