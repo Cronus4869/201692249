@@ -1,49 +1,26 @@
-```
-void NS_CLASS neighbor_add(AODV_msg * aodv_msg, struct in_addr source,
-			   unsigned int ifindex)
-{
-    struct timeval now;
-    rt_table_t *rt = NULL;
-    u_int32_t seqno = 0;
+### 添加邻居：
 
-    gettimeofday(&now, NULL);
+![屏幕快照 2018-12-21 上午8.43.08](/Users/apple/Desktop/屏幕快照 2018-12-21 上午8.43.08.png)
 
-    rt = rt_table_find(source);
+51-54 查找节点到达该邻居的路由链路，若不存在则新建链路并加入路由表
 
-    if (!rt) {
-	DEBUG(LOG_DEBUG, 0, "%s new NEIGHBOR!", ip_to_str(source));
-	rt = rt_table_insert(source, source, 1, 0,
-			     ACTIVE_ROUTE_TIMEOUT, VALID, 0, ifindex);
-    } else {
-	/* Don't update anything if this is a uni-directional link... */
-	if (rt->flags & RT_UNIDIR)
-	    return;
+![屏幕快照 2018-12-21 上午8.43.21](/Users/apple/Desktop/屏幕快照 2018-12-21 上午8.43.21.png)
 
-	if (rt->dest_seqno != 0)
-	    seqno = rt->dest_seqno;
+57-58 若存在路由链路且为单向则不做更新（flags为16位，与RT_UNIDIR做位与操作，若结果为1则为单项）
 
-	rt_table_update(rt, source, 1, seqno, ACTIVE_ROUTE_TIMEOUT,
-			VALID, rt->flags);
-    }
+![屏幕快照 2018-12-21 上午8.43.34](/Users/apple/Desktop/屏幕快照 2018-12-21 上午8.43.34.png)
 
-    if (!llfeedback && rt->hello_timer.used)
-	hello_update_timeout(rt, &now, ALLOWED_HELLO_LOSS * HELLO_INTERVAL);
+60-65 若存在路由链路且为双向则更新该路由链路（包括目的节点序列号等）
 
-    return;
-}
-```
+![屏幕快照 2018-12-21 上午8.43.49](/Users/apple/Desktop/屏幕快照 2018-12-21 上午8.43.49.png)
 
-12-15 查找节点到达该邻居的路由链路，若不存在则新建链路并加入路由表
-
-18-19若存在路由链路且为单向则不做更新（flags为16位，与RT_UNIDIR做位与操作，若结果为1则为单项）
-
-21-26若存在路由链路且为双向则更新该路由链路（包括目的节点序列号等）
-
-28-29若正在发送hello报文（存在报文计时器），则更新timeout时间（因rt为active）
+67-68 若正在发送hello报文（存在报文计时器），则更新timeout时间（因rt为active）
 
 
 
+### 邻居链路断裂：
 
+Ques：
 
 precursor list是针对每一条路由表项而言，当当前节点需要转发或产生reply时，记下使用了这条路由链路的邻居节点（放在precursor list里）。当该链路发生lose事件时，此precursor list中的邻居节点即收到RERR报文信息。
 
@@ -57,17 +34,82 @@ precursor list是针对每一条路由表项而言，当当前节点需要转发
 
 rt->precursors在FIRST定义下指向前驱节点的list_t,后被强制转化为precursor list。但强制转化后neighbor为？
 
+答: 我的理解为，此处neighbor即为前驱节点的IP。FIRST定义中的next指针是precursor list中的第一个节点。
+
+
+
 precursor list 中什么时候加入的前驱节点
+
+
 
 还没发送rerr即将precursor list删除？后广播？
 
+我的理解：若存在多个先驱节点则不做记录而是后面在相关端口进行广播。
+
+
+
+![屏幕快照 2018-12-21 上午8.46.27](/Users/apple/Desktop/屏幕快照 2018-12-21 上午8.46.27.png)
+
+87-91 若到此链路表项目的节点不为一跳距离则不是邻居
 
 
 
 
 
+![屏幕快照 2018-12-21 上午8.46.58](/Users/apple/Desktop/屏幕快照 2018-12-21 上午8.46.58.png)
+
+99-106 若此链路表项存在先驱节点且未被修复则产生RERR报文。若只有一个先驱节点则将此rerr结构的单播目的地设为该节点的前驱节点。
 
 
 
 
 
+![屏幕快照 2018-12-21 上午8.48.58](/Users/apple/Desktop/屏幕快照 2018-12-21 上午8.48.58.png)
+
+116-119 遍历路由表中的表项
+
+121-123 找出状态为有效，以broke链路目的节点为下一跳的链路表项（除本身）
+
+（即，若broke链路为不可达，则利用此链路的各表项也均为不可达）
+
+![屏幕快照 2018-12-21 上午8.50.12](/Users/apple/Desktop/屏幕快照 2018-12-21 上午8.50.12.png)
+
+
+
+129-137 若断裂链路为等待修复状态且检查链路不可保证由此链路发出的包不会在修复之前到达目标节点，则将此链路同设置为等待修复状态。若原断裂链路不为等待修复状态则将该检查链路状态设为失效。（始终与断裂链路一致）
+
+![屏幕快照 2018-12-21 上午8.50.44](/Users/apple/Desktop/屏幕快照 2018-12-21 上午8.50.44.png)
+
+58-67 aodv_rerr.c文件中的结构体
+
+若已存在rerr结构，则在此结构后直接加RERR_udest即可（偏移到现有表项后添加），rerr的条项数加一。
+
+![屏幕快照 2018-12-21 上午8.39.30](/Users/apple/Desktop/屏幕快照 2018-12-21 上午8.39.30.png)
+
+143-153 若没有以断裂链路另一端为目的节点的路由表项，则此处需要为用到断裂链路的路由表项创建一个rerr。否则直接在原rerr后加信息即可。
+
+
+
+![屏幕快照 2018-12-20 下午11.40.43](/Users/apple/Desktop/屏幕快照 2018-12-20 下午11.40.43.png)
+
+
+
+157-169 遍历判断新加入rerr表项中的前驱节点邻居是否与rerr单播目的节点（第一条路由表项的前驱节点）一致。（不一致则将单播节点设为0）
+
+ rerr_unicast_dest.s_addr 表示单播目的节点的IP，若存在多个先驱节点需要发送错误报文则将此设置为0，若仅一个先驱节点则设置为该节点IP。
+
+
+
+![屏幕快照 2018-12-21 上午9.04.11](/Users/apple/Desktop/屏幕快照 2018-12-21 上午9.04.11.png)
+
+183-189 若与断裂链路有关的仅一条路由，则向此单一前驱节点发送rerr报文
+
+
+
+![屏幕快照 2018-12-21 上午9.05.49](/Users/apple/Desktop/屏幕快照 2018-12-21 上午9.05.49.png)
+
+192-204  为此断裂链路与多条路由有关的情况（每多一个则链路dest_count加1）。
+
+遍历接口，若接口设备为使用状态（1）则从该接口广播RERR报文。
+
+（此处存在可优化之处。应仅在有关于断裂链路的先驱节点的接口上传输RERR而非全部使用接口）
