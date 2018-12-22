@@ -58,7 +58,8 @@ struct rt_table {
     u_int8_t hello_cnt;
     hash_value hash;
     int nprec;			/* Number of precursors */
-    list_t precursors;		/* List of neighbors using the route */
+    list_t precursors;		/* List of neighbors using the route */ 
+    // here is a list of all neighbors, not the neighbor of neighbor list.
 };
 
 

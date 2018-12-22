@@ -44,7 +44,7 @@ static unsigned int hashing(struct in_addr *addr, hash_value * hash);
 extern int llfeedback;
 
 void NS_CLASS rt_table_init()
-{
+{	// initialization for routing table, after that a blank table with format is created.
 	int i;
 
 	rt_tbl.num_entries = 0;
@@ -390,6 +390,7 @@ rt_table_t *NS_CLASS rt_table_find_gateway()
 }
 
 #ifdef CONFIG_GATEWAY
+/**update route who use gateway, affected by the update of gateway entry.**/
 int NS_CLASS rt_table_update_inet_rt(rt_table_t * gw, u_int32_t life)
 {
 	int n = 0;
@@ -585,7 +586,7 @@ void NS_CLASS precursor_add(rt_table_t * rt, struct in_addr addr)
 
 	/* Insert in precursors list */
 
-	list_add(&rt->precursors, &pr->l);
+	list_add(&rt->precursors, &pr->l); // this operation allows success of compulsive transition.
 	rt->nprec++;
 
 	return;
