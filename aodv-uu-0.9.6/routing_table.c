@@ -44,7 +44,7 @@ static unsigned int hashing(struct in_addr *addr, hash_value * hash);
 extern int llfeedback;
 
 void NS_CLASS rt_table_init()
-{
+{	// initialization for routing table, after that a blank table with format is created.
 	int i;
 
 	rt_tbl.num_entries = 0;
@@ -74,9 +74,9 @@ void NS_CLASS rt_table_destroy()
 unsigned int hashing(struct in_addr *addr, hash_value * hash)
 {
 	/*   *hash = (*addr & 0x7fffffff); */
-	*hash = (hash_value) addr->s_addr;
+	*hash = (hash_value) addr->s_addr; // change the value of *hash.
 
-	return (*hash & RT_TABLEMASK);
+	return (*hash & RT_TABLEMASK); // gain later 6 bits of *hash.
 }
 
 rt_table_t *NS_CLASS rt_table_insert(struct in_addr dest_addr,
@@ -349,11 +349,11 @@ rt_table_t *NS_CLASS rt_table_find(struct in_addr dest_addr)
 	unsigned int index;
 	list_t *pos;
 
-	if (rt_tbl.num_entries == 0)
+	if (rt_tbl.num_entries == 0)  // rt_tbl is a static variable.
 		return NULL;
 
 	/* Calculate index */
-	index = hashing(&dest_addr, &hash);
+	index = hashing(&dest_addr, &hash); // hash changes into dest_addr and index change into later 6 bits of it, maybe called "hash value". 
 
 	/* Handle collisions: */
 	list_foreach(pos, &rt_tbl.tbl[index]) {
@@ -390,6 +390,7 @@ rt_table_t *NS_CLASS rt_table_find_gateway()
 }
 
 #ifdef CONFIG_GATEWAY
+/**update route who use gateway, affected by the update of gateway entry.**/
 int NS_CLASS rt_table_update_inet_rt(rt_table_t * gw, u_int32_t life)
 {
 	int n = 0;
@@ -585,7 +586,7 @@ void NS_CLASS precursor_add(rt_table_t * rt, struct in_addr addr)
 
 	/* Insert in precursors list */
 
-	list_add(&rt->precursors, &pr->l);
+	list_add(&rt->precursors, &pr->l); // this operation allows success of compulsive transition.
 	rt->nprec++;
 
 	return;

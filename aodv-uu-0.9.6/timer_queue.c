@@ -145,7 +145,7 @@ int NS_CLASS timer_remove(struct timer *t)
     if (!t)
 	return -1;
 
-
+    // unattach the previous and next of l, attach the previous to next to remove l.
     if (list_unattached(&t->l))
 	res = 0;
     else

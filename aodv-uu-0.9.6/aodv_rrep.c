@@ -39,7 +39,9 @@
 extern int unidir_hack, optimized_hellos, llfeedback;
 
 #endif
-
+/**
+ * create an RREP struct and return a pointer indicating it.
+**/
 RREP *NS_CLASS rrep_create(u_int8_t flags,
 			   u_int8_t prefix,
 			   u_int8_t hcnt,
@@ -48,7 +50,7 @@ RREP *NS_CLASS rrep_create(u_int8_t flags,
 			   struct in_addr orig_addr, u_int32_t life)
 {
     RREP *rrep;
-
+// call function below to create RREP.
     rrep = (RREP *) aodv_socket_new_msg();
     rrep->type = AODV_RREP;
     rrep->res1 = 0;
@@ -76,6 +78,7 @@ RREP *NS_CLASS rrep_create(u_int8_t flags,
     return rrep;
 }
 
+/*create a rrep-ack struct and return its pointer.*/
 RREP_ack *NS_CLASS rrep_ack_create()
 {
     RREP_ack *rrep_ack;
@@ -88,12 +91,13 @@ RREP_ack *NS_CLASS rrep_ack_create()
     return rrep_ack;
 }
 
+/*process ack using debug command, as well as timeout.*/
 void NS_CLASS rrep_ack_process(RREP_ack * rrep_ack, int rrep_acklen,
 			       struct in_addr ip_src, struct in_addr ip_dst)
 {
     rt_table_t *rt;
 
-    rt = rt_table_find(ip_src);
+    rt = rt_table_find(ip_src);	// find if ip_src is already in routing table
 
     if (rt == NULL) {
 	DEBUG(LOG_WARNING, 0, "No RREP_ACK expected for %s", ip_to_str(ip_src));
@@ -103,7 +107,7 @@ void NS_CLASS rrep_ack_process(RREP_ack * rrep_ack, int rrep_acklen,
     DEBUG(LOG_DEBUG, 0, "Received RREP_ACK from %s", ip_to_str(ip_src));
 
     /* Remove unexpired timer for this RREP_ACK */
-    timer_remove(&rt->ack_timer);
+    timer_remove(&rt->ack_timer); // why need to be removed?
 }
 
 AODV_ext *NS_CLASS rrep_add_ext(RREP * rrep, int type, unsigned int offset,
@@ -139,21 +143,21 @@ void NS_CLASS rrep_send(RREP * rrep, rt_table_t * rev_rt,
 
     /* Check if we should request a RREP-ACK */
     if ((rev_rt->state == VALID && rev_rt->flags & RT_UNIDIR) ||
-	(rev_rt->hcnt == 1 && unidir_hack)) {
+	(rev_rt->hcnt == 1 && unidir_hack)) {	// why unidir_hack changes into nonzero?
 	rt_table_t *neighbor = rt_table_find(rev_rt->next_hop);
 
 	if (neighbor && neighbor->state == VALID && !neighbor->ack_timer.used) {
 	    /* If the node we received a RREQ for is a neighbor we are
 	       probably facing a unidirectional link... Better request a
 	       RREP-ack */
-	    rrep_flags |= RREP_ACK;
+	    rrep_flags |= RREP_ACK;	// nerver used after the line. Why?
 	    neighbor->flags |= RT_UNIDIR;
 
 	    /* Must remove any pending hello timeouts when we set the
 	       RT_UNIDIR flag, else the route may expire after we begin to
 	       ignore hellos... */
 	    timer_remove(&neighbor->hello_timer);
-	    neighbor_link_break(neighbor);
+	    neighbor_link_break(neighbor); // in undirectional circumstance we can consider the link towards neighnor has broken, then handle it. 
 
 	    DEBUG(LOG_DEBUG, 0, "Link to %s is unidirectional!",
 		  ip_to_str(neighbor->dest_addr));
@@ -171,8 +175,8 @@ void NS_CLASS rrep_send(RREP * rrep, rt_table_t * rev_rt,
 
     /* Update precursor lists */
     if (fwd_rt) {
-	precursor_add(fwd_rt, rev_rt->next_hop);
-	precursor_add(rev_rt, fwd_rt->next_hop);
+	precursor_add(fwd_rt, rev_rt->next_hop); // add next hop of rev_rt into the precursor list of fwd_rt.
+	precursor_add(rev_rt, fwd_rt->next_hop);// add next hop of fwd_rt into the precursor list of rev_rt.
     }
 
     if (!llfeedback && optimized_hellos)
@@ -197,7 +201,7 @@ void NS_CLASS rrep_forward(RREP * rrep, int size, rt_table_t * rev_rt,
 
     /* Here we should do a check if we should request a RREP_ACK,
        i.e we suspect a unidirectional link.. But how? */
-    if (0) {
+    if (0) {	// the statement will nerver be execute.
 	rt_table_t *neighbor;
 
 	/* If the source of the RREP is not a neighbor we must find the
@@ -276,7 +280,7 @@ void NS_CLASS rrep_process(RREP * rrep, int rreplen, struct in_addr ip_src,
     /* Determine whether there are any extensions */
     ext = (AODV_ext *) ((char *) rrep + RREP_SIZE);
 
-    while ((rreplen - extlen) > RREP_SIZE) {
+    while ((rreplen - extlen) > RREP_SIZE) {	// extlen is initialized to 0, but will change in this loop.
 	switch (ext->type) {
 	case RREP_EXT:
 	    DEBUG(LOG_INFO, 0, "RREP include EXTENSION");
@@ -360,10 +364,10 @@ void NS_CLASS rrep_process(RREP * rrep, int rreplen, struct in_addr ip_src,
 	    /* Add a "fake" route indicating that this is an Internet
 	     * destination, thus should be encapsulated and routed through a
 	     * gateway... */
-	    if (!inet_rt)
+	    if (!inet_rt) // use function to send device msg but not recieve return. Just for saving the real address instead of gateway address.
 		rt_table_insert(inet_dest_addr, rrep_dest, rrep_new_hcnt, 0,
 				rrep_lifetime, VALID, RT_INET_DEST, ifindex);
-	    else if (inet_rt->state == INVALID || rrep_new_hcnt < inet_rt->hcnt) {
+	    else if (inet_rt->state == INVALID || rrep_new_hcnt < inet_rt->hcnt) {	// is really update.
 		rt_table_update(inet_rt, rrep_dest, rrep_new_hcnt, 0,
 				rrep_lifetime, VALID, RT_INET_DEST |
 				inet_rt->flags);
